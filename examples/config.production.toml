@@ -1,0 +1,68 @@
+# Production Configuration
+# This configuration is suitable for production deployment
+
+[server]
+bind = "0.0.0.0"
+port = 5000
+web_port = 8080
+workers = 8
+
+[database]
+url = "sqlite:/var/lib/ghostdock/ghostdock.db"
+max_connections = 20
+
+[storage]
+type = "filesystem"
+path = "/var/lib/ghostdock/storage"
+max_blob_size = "5GB"
+
+[auth]
+jwt_secret = "REPLACE-WITH-SECURE-RANDOM-KEY"
+session_timeout = "24h"
+
+[oauth.github]
+enabled = true
+client_id = "YOUR_GITHUB_CLIENT_ID"
+client_secret = "YOUR_GITHUB_CLIENT_SECRET"
+redirect_uri = "https://registry.yourdomain.com/auth/github/callback"
+
+[oauth.google]
+enabled = true
+client_id = "YOUR_GOOGLE_CLIENT_ID"
+client_secret = "YOUR_GOOGLE_CLIENT_SECRET"
+redirect_uri = "https://registry.yourdomain.com/auth/google/callback"
+
+[oauth.microsoft]
+enabled = true
+client_id = "YOUR_MICROSOFT_CLIENT_ID"
+client_secret = "YOUR_MICROSOFT_CLIENT_SECRET"
+tenant_id = "YOUR_TENANT_ID"
+redirect_uri = "https://registry.yourdomain.com/auth/microsoft/callback"
+
+[logging]
+level = "info"
+file = "/var/log/ghostdock/ghostdock.log"
+format = "json"
+
+[metrics]
+enabled = true
+path = "/metrics"
+
+[security]
+require_auth = true
+allow_anonymous_pull = false
+max_upload_size = "5GB"
+rate_limit = 1000
+
+# Additional production settings
+[storage.cleanup]
+enabled = true
+interval = "1h"
+orphaned_blob_ttl = "7d"
+temp_upload_ttl = "1h"
+
+[backup]
+enabled = true
+interval = "6h"
+retention = "30d"
+s3_bucket = "your-backup-bucket"

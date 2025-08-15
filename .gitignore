@@ -1,4 +1,54 @@
-/zig-cache/
-/zig-out/
-*.o
-*.exe
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Registry data
+registry-data/
+storage/
+
+# SSL certificates
+certs/
+*.pem
+*.key
+*.crt
+
+# Configuration overrides
+config.local.toml
+config.prod.toml

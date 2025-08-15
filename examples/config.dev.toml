@@ -1,0 +1,55 @@
+# Development Configuration
+# This configuration is suitable for local development
+
+[server]
+bind = "127.0.0.1"
+port = 5000
+web_port = 8080
+workers = 2
+
+[database]
+url = "sqlite:dev.db"
+max_connections = 5
+
+[storage]
+type = "filesystem"
+path = "./dev-storage"
+max_blob_size = "1GB"
+
+[auth]
+jwt_secret = "dev-secret-key-change-in-production"
+session_timeout = "8h"
+
+[oauth.github]
+enabled = false
+client_id = ""
+client_secret = ""
+redirect_uri = "http://localhost:8080/auth/github/callback"
+
+[oauth.google]
+enabled = false
+client_id = ""
+client_secret = ""
+redirect_uri = "http://localhost:8080/auth/google/callback"
+
+[oauth.microsoft]
+enabled = false
+client_id = ""
+client_secret = ""
+tenant_id = ""
+redirect_uri = "http://localhost:8080/auth/microsoft/callback"
+
+[logging]
+level = "debug"
+file = "dev.log"
+format = "text"
+
+[metrics]
+enabled = true
+path = "/metrics"
+
+[security]
+require_auth = false
+allow_anonymous_pull = true
+max_upload_size = "500MB"
+rate_limit = 1000

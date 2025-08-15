@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  ghostdock:
+    image: ghostdock:latest
+    container_name: ghostdock-registry
+    restart: unless-stopped
+    ports:
+      - "5000:5000"  # Registry API
+      - "8080:8080"  # Web UI
+    environment:
+      - GHOSTDOCK_BIND=0.0.0.0
+      - GHOSTDOCK_STORAGE_PATH=/var/lib/ghostdock/storage
+      - GHOSTDOCK_DATABASE_PATH=/var/lib/ghostdock/ghostdock.db
+      - RUST_LOG=info
+      - GHOSTDOCK_JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      # GitHub OAuth
+      - GHOSTDOCK_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GHOSTDOCK_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      # Google OAuth  
+      - GHOSTDOCK_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GHOSTDOCK_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Microsoft OAuth
+      - GHOSTDOCK_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+      - GHOSTDOCK_MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
+      - GHOSTDOCK_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
+    volumes:
+      - ghostdock_data:/var/lib/ghostdock
+      - ghostdock_logs:/var/log/ghostdock
+      - ./config:/etc/ghostdock:ro
+    networks:
+      - ghostdock
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: ghostdock-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - ghostdock
+    depends_on:
+      - ghostdock
+
+  # Optional: PostgreSQL for better performance
+  db:
+    image: postgres:15-alpine
+    container_name: ghostdock-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ghostdock
+      - POSTGRES_USER=ghostdock
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ghostdock
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghostdock"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: ghostdock-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - ghostdock
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Optional: Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ghostdock-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ghostdock
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  # Optional: Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ghostdock-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - ghostdock
+    depends_on:
+      - prometheus
+
+volumes:
+  ghostdock_data:
+    driver: local
+  ghostdock_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  ghostdock:
+    driver: bridge

@@ -1,0 +1,62 @@
+# GhostDock Registry Configuration
+
+[server]
+bind = "0.0.0.0"
+port = 5000
+workers = 4
+keep_alive = 60
+
+[database]
+path = "/var/lib/ghostdock/ghostdock.db"
+max_connections = 10
+connection_timeout = 30
+
+[storage]
+backend = "filesystem"
+path = "/var/lib/ghostdock/storage"
+max_upload_size = 5368709120  # 5GB
+enable_deduplication = true
+
+[auth]
+jwt_secret = "change-this-secret-in-production-please-use-a-secure-random-key"
+jwt_expiration = 86400  # 24 hours
+enable_anonymous_read = true
+
+[auth.oauth.google]
+client_id = ""
+client_secret = ""
+redirect_url = "http://localhost:8080/auth/oauth/google/callback"
+enabled = false
+
+[auth.oauth.github]
+client_id = ""
+client_secret = ""
+redirect_url = "http://localhost:8080/auth/oauth/github/callback"
+enabled = false
+
+[auth.oauth.microsoft]
+client_id = ""
+client_secret = ""
+redirect_url = "http://localhost:8080/auth/oauth/microsoft/callback"
+enabled = false
+
+[registry]
+name = "ghostdock"
+title = "GhostDock Registry"
+description = "A next-generation Docker registry with advanced management capabilities"
+enable_manifest_list = true
+enable_content_trust = false
+max_manifest_size = 1048576    # 1MB
+max_layer_size = 10737418240   # 10GB
+
+[web]
+port = 8080
+enable_ui = true
+ui_path = "/app/web/dist"
+cors_enabled = true
+cors_origins = ["*"]
+
+[logging]
+level = "info"
+format = "pretty"
+# file = "/var/log/ghostdock/ghostdock.log"

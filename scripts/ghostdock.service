@@ -1,0 +1,45 @@
+[Unit]
+Description=GhostDock Registry - Self-hosted Docker Registry
+Documentation=https://github.com/ghostkellz/ghostdock
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=ghostdock
+Group=ghostdock
+WorkingDirectory=/var/lib/ghostdock
+ExecStart=/usr/local/bin/ghostdock --config /etc/ghostdock/config.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=RUST_LOG=info
+Environment=GHOSTDOCK_CONFIG=/etc/ghostdock/config.toml
+Environment=GHOSTDOCK_STORAGE_PATH=/var/lib/ghostdock/storage
+Environment=GHOSTDOCK_DATABASE_PATH=/var/lib/ghostdock/ghostdock.db
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ghostdock /var/log/ghostdock
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

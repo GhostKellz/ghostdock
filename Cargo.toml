@@ -1,0 +1,86 @@
+[package]
+name = "ghostdock"
+version = "0.1.0"
+edition = "2024"
+authors = ["Christopher Kelley <ckelley@ghostkellz.sh>"]
+description = "A next-generation, self-hosted Docker registry with advanced management capabilities"
+license = "MIT"
+repository = "https://github.com/ghostkellz/ghostdock"
+keywords = ["docker", "registry", "container", "rust"]
+categories = ["web-programming::http-server", "development-tools"]
+
+[dependencies]
+# Web framework and HTTP
+axum = "0.7"
+tokio = { version = "1.0", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
+hyper = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Database and storage
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Cryptography and hashing
+sha2 = "0.10"
+digest = "0.10"
+rand = "0.8"
+bcrypt = "0.15"
+regex = "1.0"
+
+# Authentication and OAuth2
+oauth2 = "4.4"
+jsonwebtoken = "9.0"
+base64 = "0.22"
+
+# Configuration and CLI
+clap = { version = "4.0", features = ["derive"] }
+config = "0.14"
+toml = "0.8"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Time and date
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+futures = "0.3"
+async-trait = "0.1"
+
+# File system and path utilities
+walkdir = "2.0"
+tempfile = "3.0"
+
+# Compression
+flate2 = "1.0"
+tar = "0.4"
+
+# HTTP client for registry operations
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+# Docker manifest and image handling
+oci-spec = "0.6"
+
+[dev-dependencies]
+assert_matches = "1.5"
+tempfile = "3.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true

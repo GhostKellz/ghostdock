@@ -1,0 +1,57 @@
+# GhostDock Development Configuration
+
+[server]
+bind = "127.0.0.1"
+port = 5000
+workers = 2
+keep_alive = 60
+
+[database]
+path = "./dev-data/ghostdock.db"
+max_connections = 5
+connection_timeout = 30
+
+[storage]
+backend = "filesystem"
+path = "./dev-data/storage"
+max_upload_size = 1073741824  # 1GB for development
+enable_deduplication = true
+
+[auth]
+jwt_secret = "dev-secret-change-this-in-production"
+jwt_expiration = 3600  # 1 hour for development
+enable_anonymous_read = true
+
+# Example OAuth configurations for development
+[auth.oauth.github]
+client_id = "your-github-dev-app-id"
+client_secret = "your-github-dev-app-secret"
+redirect_url = "http://localhost:8080/auth/oauth/github/callback"
+enabled = false  # Enable when you have GitHub app configured
+
+[auth.oauth.google]
+client_id = "your-google-dev-app-id.googleusercontent.com"
+client_secret = "your-google-dev-app-secret"
+redirect_url = "http://localhost:8080/auth/oauth/google/callback"
+enabled = false  # Enable when you have Google app configured
+
+[registry]
+name = "ghostdock-dev"
+title = "GhostDock Development Registry"
+description = "Development instance of GhostDock Docker Registry"
+enable_manifest_list = true
+enable_content_trust = false
+max_manifest_size = 1048576    # 1MB
+max_layer_size = 1073741824    # 1GB for development
+
+[web]
+port = 8080
+enable_ui = true
+ui_path = "./web/dist"
+cors_enabled = true
+cors_origins = ["*"]
+
+[logging]
+level = "debug"
+format = "pretty"
+# file = "./dev-data/logs/ghostdock.log"

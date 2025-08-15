@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  ghostdock:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ghostdock-registry
+    ports:
+      - "5000:5000"    # Registry API
+      - "8080:8080"    # Web UI
+    volumes:
+      - ./data:/var/lib/ghostdock
+      - ./config:/etc/ghostdock
+      - ./logs:/var/log/ghostdock
+    environment:
+      - GHOSTDOCK_CONFIG=/etc/ghostdock/config.toml
+      - GHOSTDOCK_STORAGE_PATH=/var/lib/ghostdock
+      - GHOSTDOCK_LOG_LEVEL=info
+      - RUST_LOG=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Database (if using external database instead of embedded SQLite)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: ghostdock-postgres
+  #   environment:
+  #     POSTGRES_DB: ghostdock
+  #     POSTGRES_USER: ghostdock
+  #     POSTGRES_PASSWORD: changeme123
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ghostdock"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Optional: Redis for caching and sessions
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ghostdock-redis
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ghostdock-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - ghostdock
+    restart: unless-stopped
+
+volumes:
+  # postgres_data:
+  # redis_data:
+  ghostdock_data:
+  ghostdock_logs:
+
+networks:
+  default:
+    name: ghostdock-network
