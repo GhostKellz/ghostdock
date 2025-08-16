@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostDock Registry - Enhanced Dashboard</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fab fa-docker text-2xl"></i>
+                        <h1 class="text-xl font-bold">GhostDock Registry</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm">{{ currentUser || 'Guest' }}</span>
+                        <button @click="logout" v-if="currentUser" class="text-sm hover:underline">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <i class="fas fa-box text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-600 text-sm">Total Images</p>
+                            <p class="text-2xl font-bold">{{ stats.totalImages }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <i class="fas fa-download text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-600 text-sm">Total Pulls</p>
+                            <p class="text-2xl font-bold">{{ stats.totalPulls }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg">
+                            <i class="fas fa-layer-group text-purple-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-600 text-sm">Docker Stacks</p>
+                            <p class="text-2xl font-bold">{{ stats.totalStacks }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <i class="fas fa-users text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-600 text-sm">Active Users</p>
+                            <p class="text-2xl font-bold">{{ stats.activeUsers }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Activity Feed -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-activity text-blue-600 mr-2"></i>
+                            Real-time Activity
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            <div v-for="activity in realtimeActivities" :key="activity.id" 
+                                 class="flex items-center space-x-3 p-3 bg-gray-50 rounded">
+                                <i :class="activity.icon" class="text-blue-600"></i>
+                                <div class="flex-1">
+                                    <p class="text-sm">{{ activity.message }}</p>
+                                    <p class="text-xs text-gray-500">{{ formatTime(activity.timestamp) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registry Usage Chart -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-chart-line text-green-600 mr-2"></i>
+                            Registry Usage (Last 24h)
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <canvas id="usageChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Repositories -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-database text-purple-600 mr-2"></i>
+                        Recent Repositories
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Repository</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr v-for="repo in repositories" :key="repo.name">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <i class="fab fa-docker text-blue-600 mr-2"></i>
+                                        <span class="font-medium">{{ repo.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ repo.tagCount }} tags
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ formatSize(repo.size) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ formatTime(repo.lastUpdated) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button @click="viewRepository(repo)" class="text-blue-600 hover:text-blue-900 mr-2">View</button>
+                                    <button @click="deleteRepository(repo)" class="text-red-600 hover:text-red-900">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentUser: null,
+                    stats: {
+                        totalImages: 0,
+                        totalPulls: 0,
+                        totalStacks: 0,
+                        activeUsers: 0
+                    },
+                    repositories: [],
+                    realtimeActivities: [],
+                    websocket: null,
+                    usageChart: null
+                };
+            },
+            mounted() {
+                this.initializeWebSocket();
+                this.loadDashboardData();
+                this.initializeChart();
+            },
+            methods: {
+                initializeWebSocket() {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws`;
+                    
+                    this.websocket = new WebSocket(wsUrl);
+                    
+                    this.websocket.onopen = () => {
+                        console.log('WebSocket connected');
+                        // Subscribe to dashboard updates
+                        this.websocket.send(JSON.stringify({
+                            type: 'subscribe',
+                            topics: ['registry_activity', 'stats_update']
+                        }));
+                    };
+                    
+                    this.websocket.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        console.log('WebSocket disconnected, attempting to reconnect...');
+                        setTimeout(() => this.initializeWebSocket(), 5000);
+                    };
+                },
+                handleWebSocketMessage(data) {
+                    switch (data.type) {
+                        case 'registry_activity':
+                            this.realtimeActivities.unshift({
+                                id: Date.now(),
+                                message: data.message,
+                                icon: data.icon || 'fas fa-info-circle',
+                                timestamp: new Date()
+                            });
+                            // Keep only last 10 activities
+                            if (this.realtimeActivities.length > 10) {
+                                this.realtimeActivities.pop();
+                            }
+                            break;
+                        case 'stats_update':
+                            this.stats = { ...this.stats, ...data.stats };
+                            break;
+                    }
+                },
+                async loadDashboardData() {
+                    try {
+                        // Load stats
+                        const statsResponse = await fetch('/api/v2/stats');
+                        if (statsResponse.ok) {
+                            this.stats = await statsResponse.json();
+                        }
+                        
+                        // Load recent repositories
+                        const reposResponse = await fetch('/v2/_catalog?n=10');
+                        if (reposResponse.ok) {
+                            const reposData = await reposResponse.json();
+                            this.repositories = reposData.repositories || [];
+                        }
+                    } catch (error) {
+                        console.error('Failed to load dashboard data:', error);
+                    }
+                },
+                initializeChart() {
+                    const ctx = document.getElementById('usageChart').getContext('2d');
+                    this.usageChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                            datasets: [{
+                                label: 'Image Pulls',
+                                data: Array.from({length: 24}, () => Math.floor(Math.random() * 100)),
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                },
+                formatTime(timestamp) {
+                    return new Date(timestamp).toLocaleString();
+                },
+                formatSize(bytes) {
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    if (bytes === 0) return '0 B';
+                    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+                },
+                viewRepository(repo) {
+                    window.location.href = `/repositories/${repo.name}`;
+                },
+                async deleteRepository(repo) {
+                    if (confirm(`Are you sure you want to delete repository ${repo.name}?`)) {
+                        try {
+                            const response = await fetch(`/v2/${repo.name}/manifests/latest`, {
+                                method: 'DELETE'
+                            });
+                            if (response.ok) {
+                                this.loadDashboardData();
+                            }
+                        } catch (error) {
+                            console.error('Failed to delete repository:', error);
+                        }
+                    }
+                },
+                logout() {
+                    this.currentUser = null;
+                    window.location.href = '/login';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

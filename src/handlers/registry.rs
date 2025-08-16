@@ -43,33 +43,25 @@ pub async fn get_blob(
     validate_repository_name(&name)?;
     validate_digest(&digest)?;
 
-    // Check if repository exists
-    let repo = get_repository_by_name(&state, &name).await?;
-    
-    // Check if blob exists for this repository
-    let blob = get_blob_by_digest(&state, &repo.id, &digest).await?;
-    
     // Get blob data from storage
-    let blob_data = state.storage.get_blob(&digest).await?;
+    let blob_data = state.storage.get_blob(&digest).await
+        .map_err(|e| Error::Storage { message: e.to_string() })?;
     
-    // Update last accessed time
-    update_blob_access_time(&state, &blob.id).await?;
-    
+    // Create response headers
     let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        blob.media_type.parse().unwrap_or("application/octet-stream".parse().unwrap())
-    );
-    headers.insert(
-        header::CONTENT_LENGTH,
-        blob_data.len().to_string().parse().unwrap()
-    );
-    headers.insert(
-        "Docker-Content-Digest",
-        digest.parse().unwrap()
-    );
-
-    Ok((StatusCode::OK, headers, blob_data))
+    headers.insert("content-type", "application/octet-stream".parse().unwrap());
+    headers.insert("docker-content-digest", digest.parse().unwrap());
+    
+    // Return the blob data if found
+    match blob_data {
+        Some(data) => {
+            headers.insert("content-length", data.len().to_string().parse().unwrap());
+            Ok((StatusCode::OK, headers, data))
+        }
+        None => Err(Error::NotFound {
+            resource: format!("blob {}", digest),
+        })
+    }
 }
 
 /// Head blob by digest (same as GET but without body)

@@ -11,11 +11,14 @@ categories = ["web-programming::http-server", "development-tools"]
 
 [dependencies]
 # Web framework and HTTP
-axum = "0.7"
+axum = { version = "0.7", features = ["ws", "macros"] }
 tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
-hyper = "1.0"
+hyper = { version = "1.0", features = ["full"] }
+bytes = "1.0"
+dashmap = "5.5"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -29,6 +32,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Cryptography and hashing
 sha2 = "0.10"
 digest = "0.10"
+hex = "0.4"
 rand = "0.8"
 bcrypt = "0.15"
 regex = "1.0"
@@ -72,14 +76,30 @@ reqwest = { version = "0.11", features = ["json", "stream"] }
 # Docker manifest and image handling
 oci-spec = "0.6"
 
+# WebSocket support
+tokio-tungstenite = "0.20"
+
+# URL parsing for stack imports
+url = "2.0"
+
+# Metrics and monitoring
+prometheus = "0.13"
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+
+# Docker Compose parsing
+docker-compose-types = "0.12"
+
 [dev-dependencies]
 assert_matches = "1.5"
 tempfile = "3.0"
+tokio-test = "0.4"
 
 [profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
+strip = true
 
 [profile.dev]
 opt-level = 0

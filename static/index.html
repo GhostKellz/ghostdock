@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostDock Registry</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="bg-gray-800 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <h1 class="text-white text-xl font-bold">
+                                <i class="fas fa-ghost mr-2"></i>GhostDock
+                            </h1>
+                        </div>
+                        <div class="hidden md:ml-6 md:flex md:space-x-8">
+                            <a href="#dashboard" 
+                               @click="setActiveTab('dashboard')"
+                               :class="{'border-blue-500 text-white': activeTab === 'dashboard', 'border-transparent text-gray-300 hover:text-white': activeTab !== 'dashboard'}"
+                               class="border-b-2 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
+                                Dashboard
+                            </a>
+                            <a href="#repositories" 
+                               @click="setActiveTab('repositories')"
+                               :class="{'border-blue-500 text-white': activeTab === 'repositories', 'border-transparent text-gray-300 hover:text-white': activeTab !== 'repositories'}"
+                               class="border-b-2 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
+                                Repositories
+                            </a>
+                            <a href="#stacks" 
+                               @click="setActiveTab('stacks')"
+                               :class="{'border-blue-500 text-white': activeTab === 'stacks', 'border-transparent text-gray-300 hover:text-white': activeTab !== 'stacks'}"
+                               class="border-b-2 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
+                                Stacks
+                            </a>
+                            <a href="#activity" 
+                               @click="setActiveTab('activity')"
+                               :class="{'border-blue-500 text-white': activeTab === 'activity', 'border-transparent text-gray-300 hover:text-white': activeTab !== 'activity'}"
+                               class="border-b-2 px-1 pt-1 pb-4 text-sm font-medium transition-colors">
+                                Activity
+                            </a>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <!-- Connection Status -->
+                        <div class="flex items-center">
+                            <div :class="{'bg-green-500': isConnected, 'bg-red-500': !isConnected}" 
+                                 class="w-2 h-2 rounded-full mr-2"></div>
+                            <span class="text-gray-300 text-sm">
+                                {{ isConnected ? 'Connected' : 'Disconnected' }}
+                            </span>
+                        </div>
+                        <!-- User Menu -->
+                        <div class="relative">
+                            <button @click="showUserMenu = !showUserMenu"
+                                    class="flex items-center text-gray-300 hover:text-white">
+                                <i class="fas fa-user-circle text-2xl"></i>
+                            </button>
+                            <div v-if="showUserMenu"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                                <a href="#" @click="logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 px-4">
+            <!-- Dashboard Tab -->
+            <div v-if="activeTab === 'dashboard'" class="space-y-6">
+                <!-- Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-database text-2xl text-blue-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Storage Used</dt>
+                                        <dd class="text-lg font-medium text-gray-900">{{ formatBytes(metrics.storage_size) }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-users text-2xl text-green-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Active Connections</dt>
+                                        <dd class="text-lg font-medium text-gray-900">{{ metrics.active_connections }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-rocket text-2xl text-purple-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Operations/min</dt>
+                                        <dd class="text-lg font-medium text-gray-900">{{ metrics.registry_operations_per_minute }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="p-5">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-layer-group text-2xl text-orange-600"></i>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Active Stacks</dt>
+                                        <dd class="text-lg font-medium text-gray-900">{{ activeStacks }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- System Metrics Chart -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">System Metrics</h3>
+                        <canvas id="metricsChart" height="200"></canvas>
+                    </div>
+
+                    <!-- Activity Chart -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Registry Activity</h3>
+                        <canvas id="activityChart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
+                    </div>
+                    <div class="divide-y divide-gray-200">
+                        <div v-for="activity in recentActivities.slice(0, 10)" :key="activity.id"
+                             class="px-6 py-4 hover:bg-gray-50">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0">
+                                        <i :class="getActivityIcon(activity.action)" class="text-lg"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-gray-900">
+                                            {{ activity.user_email }} {{ getActivityDescription(activity.action) }}
+                                            <span class="font-semibold">{{ activity.repository }}</span>
+                                            <span v-if="activity.tag" class="text-gray-500">:{{ activity.tag }}</span>
+                                        </p>
+                                        <p class="text-sm text-gray-500">{{ formatTime(activity.timestamp) }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    <span v-if="activity.size">{{ formatBytes(activity.size) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repositories Tab -->
+            <div v-if="activeTab === 'repositories'" class="space-y-6">
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">Repositories</h3>
+                            <div class="flex space-x-3">
+                                <input v-model="repositorySearch" 
+                                       type="text" 
+                                       placeholder="Search repositories..."
+                                       class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                <button class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-2"></i>New Repository
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="divide-y divide-gray-200">
+                        <div v-for="repo in filteredRepositories" :key="repo.name"
+                             class="px-6 py-4 hover:bg-gray-50">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="text-lg font-medium text-gray-900">{{ repo.name }}</h4>
+                                    <p class="text-sm text-gray-500">{{ repo.tags.length }} tags • Last push {{ formatTime(repo.last_push) }}</p>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ formatBytes(repo.size) }}
+                                    </span>
+                                    <button class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stacks Tab -->
+            <div v-if="activeTab === 'stacks'" class="space-y-6">
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-medium text-gray-900">Docker Compose Stacks</h3>
+                            <div class="flex space-x-3">
+                                <button @click="showImportDialog = true"
+                                        class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+                                    <i class="fas fa-download mr-2"></i>Import Stack
+                                </button>
+                                <button @click="showCreateStackDialog = true"
+                                        class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-2"></i>Create Stack
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                        <div v-for="stack in stacks" :key="stack.id"
+                             class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="text-lg font-medium text-gray-900">{{ stack.name }}</h4>
+                                    <p class="text-sm text-gray-500 mt-1">{{ stack.description }}</p>
+                                    <div class="flex flex-wrap gap-1 mt-2">
+                                        <span v-for="tag in stack.tags" :key="tag"
+                                              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            {{ tag }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <button class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center justify-between">
+                                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span><i class="fas fa-star mr-1"></i>{{ stack.star_count }}</span>
+                                    <span><i class="fas fa-download mr-1"></i>{{ stack.download_count }}</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button @click="deployStack(stack.id)"
+                                            class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                        Deploy
+                                    </button>
+                                    <button class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">
+                                        View
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Tab -->
+            <div v-if="activeTab === 'activity'" class="space-y-6">
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Activity Feed</h3>
+                    </div>
+                    <div class="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                        <div v-for="activity in recentActivities" :key="activity.id"
+                             class="px-6 py-4 hover:bg-gray-50">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i :class="getActivityIcon(activity.action)" class="text-lg mt-1"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <p class="text-sm">
+                                        <span class="font-medium">{{ activity.user_email }}</span>
+                                        {{ getActivityDescription(activity.action) }}
+                                        <span class="font-semibold">{{ activity.repository }}</span>
+                                        <span v-if="activity.tag" class="text-gray-500">:{{ activity.tag }}</span>
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ formatTime(activity.timestamp) }}</p>
+                                </div>
+                                <div v-if="activity.size" class="text-sm text-gray-500">
+                                    {{ formatBytes(activity.size) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Import Stack Dialog -->
+        <div v-if="showImportDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Import Docker Compose Stack</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">GitHub URL or Raw URL</label>
+                            <input v-model="importUrl" 
+                                   type="url" 
+                                   placeholder="https://raw.githubusercontent.com/user/repo/main/docker-compose.yml"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Stack Name</label>
+                            <input v-model="importName" 
+                                   type="text" 
+                                   placeholder="my-awesome-stack"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea v-model="importDescription" 
+                                      placeholder="Description of the stack..."
+                                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button @click="showImportDialog = false"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">
+                        Cancel
+                    </button>
+                    <button @click="importStack"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+                        Import Stack
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="fixed top-4 right-4 space-y-2 z-40">
+            <div v-for="notification in notifications" :key="notification.id"
+                 :class="getNotificationClass(notification.severity)"
+                 class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto">
+                <div class="p-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i :class="getNotificationIcon(notification.severity)" class="text-xl"></i>
+                        </div>
+                        <div class="ml-3 w-0 flex-1">
+                            <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
+                            <p class="mt-1 text-sm text-gray-500">{{ notification.message }}</p>
+                        </div>
+                        <div class="ml-4 flex-shrink-0 flex">
+                            <button @click="dismissNotification(notification.id)"
+                                    class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    activeTab: 'dashboard',
+                    isConnected: false,
+                    showUserMenu: false,
+                    showImportDialog: false,
+                    showCreateStackDialog: false,
+                    ws: null,
+                    metrics: {
+                        cpu_usage: 0,
+                        memory_usage: 0,
+                        disk_usage: 0,
+                        network_rx: 0,
+                        network_tx: 0,
+                        active_connections: 0,
+                        registry_operations_per_minute: 0,
+                        storage_size: 0
+                    },
+                    recentActivities: [],
+                    repositories: [],
+                    stacks: [],
+                    notifications: [],
+                    repositorySearch: '',
+                    activeStacks: 0,
+                    metricsChart: null,
+                    activityChart: null,
+                    importUrl: '',
+                    importName: '',
+                    importDescription: ''
+                };
+            },
+            computed: {
+                filteredRepositories() {
+                    if (!this.repositorySearch) return this.repositories;
+                    return this.repositories.filter(repo => 
+                        repo.name.toLowerCase().includes(this.repositorySearch.toLowerCase())
+                    );
+                }
+            },
+            mounted() {
+                this.connectWebSocket();
+                this.loadInitialData();
+                this.initCharts();
+            },
+            methods: {
+                setActiveTab(tab) {
+                    this.activeTab = tab;
+                },
+                connectWebSocket() {
+                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+                    
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        // Subscribe to all topics
+                        this.ws.send(JSON.stringify({
+                            type: 'subscribe',
+                            topics: ['registry_activity', 'stack_deployments', 'system_metrics', 'notifications']
+                        }));
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        this.handleWebSocketMessage(message);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        // Reconnect after 5 seconds
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+                },
+                handleWebSocketMessage(message) {
+                    switch (message.type) {
+                        case 'broadcast':
+                            this.handleBroadcastMessage(message.message);
+                            break;
+                        case 'welcome':
+                            console.log('Connected with ID:', message.connection_id);
+                            break;
+                    }
+                },
+                handleBroadcastMessage(broadcast) {
+                    switch (broadcast.type) {
+                        case 'registry_activity':
+                            this.recentActivities.unshift(broadcast.activity);
+                            if (this.recentActivities.length > 100) {
+                                this.recentActivities = this.recentActivities.slice(0, 100);
+                            }
+                            this.updateActivityChart();
+                            break;
+                        case 'system_metrics':
+                            this.metrics = broadcast.metrics;
+                            this.updateMetricsChart();
+                            break;
+                        case 'notification':
+                            this.notifications.push(broadcast.notification);
+                            setTimeout(() => {
+                                this.dismissNotification(broadcast.notification.id);
+                            }, 5000);
+                            break;
+                        case 'stack_deployment':
+                            this.addNotification('Stack Deployment', broadcast.message, 'info');
+                            break;
+                    }
+                },
+                async loadInitialData() {
+                    // Load repositories, stacks, etc.
+                    // This would normally make API calls
+                    this.repositories = [
+                        {
+                            name: 'my-app',
+                            tags: ['latest', 'v1.0.0'],
+                            last_push: new Date(),
+                            size: 1024 * 1024 * 150
+                        },
+                        {
+                            name: 'api-service',
+                            tags: ['latest'],
+                            last_push: new Date(Date.now() - 86400000),
+                            size: 1024 * 1024 * 80
+                        }
+                    ];
+                    
+                    this.stacks = [
+                        {
+                            id: '1',
+                            name: 'LAMP Stack',
+                            description: 'Complete LAMP development environment',
+                            tags: ['php', 'mysql', 'apache'],
+                            star_count: 25,
+                            download_count: 150
+                        },
+                        {
+                            id: '2',
+                            name: 'Node.js + MongoDB',
+                            description: 'Modern web development stack',
+                            tags: ['nodejs', 'mongodb', 'express'],
+                            star_count: 42,
+                            download_count: 300
+                        }
+                    ];
+                },
+                initCharts() {
+                    // System Metrics Chart
+                    const metricsCtx = document.getElementById('metricsChart').getContext('2d');
+                    this.metricsChart = new Chart(metricsCtx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'CPU %',
+                                data: [],
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.1
+                            }, {
+                                label: 'Memory %',
+                                data: [],
+                                borderColor: 'rgb(16, 185, 129)',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Activity Chart
+                    const activityCtx = document.getElementById('activityChart').getContext('2d');
+                    this.activityChart = new Chart(activityCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Push', 'Pull', 'Delete'],
+                            datasets: [{
+                                data: [0, 0, 0],
+                                backgroundColor: [
+                                    'rgb(59, 130, 246)',
+                                    'rgb(16, 185, 129)',
+                                    'rgb(239, 68, 68)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                },
+                updateMetricsChart() {
+                    const now = new Date().toLocaleTimeString();
+                    
+                    this.metricsChart.data.labels.push(now);
+                    this.metricsChart.data.datasets[0].data.push(this.metrics.cpu_usage);
+                    this.metricsChart.data.datasets[1].data.push(this.metrics.memory_usage);
+                    
+                    // Keep only last 20 points
+                    if (this.metricsChart.data.labels.length > 20) {
+                        this.metricsChart.data.labels.shift();
+                        this.metricsChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+                    
+                    this.metricsChart.update('none');
+                },
+                updateActivityChart() {
+                    const activities = this.recentActivities.slice(0, 50);
+                    const counts = {
+                        push: activities.filter(a => a.action === 'push').length,
+                        pull: activities.filter(a => a.action === 'pull').length,
+                        delete: activities.filter(a => a.action === 'delete').length
+                    };
+                    
+                    this.activityChart.data.datasets[0].data = [counts.push, counts.pull, counts.delete];
+                    this.activityChart.update();
+                },
+                getActivityIcon(action) {
+                    switch (action) {
+                        case 'push': return 'fas fa-upload text-blue-600';
+                        case 'pull': return 'fas fa-download text-green-600';
+                        case 'delete': return 'fas fa-trash text-red-600';
+                        default: return 'fas fa-circle text-gray-600';
+                    }
+                },
+                getActivityDescription(action) {
+                    switch (action) {
+                        case 'push': return 'pushed to';
+                        case 'pull': return 'pulled from';
+                        case 'delete': return 'deleted from';
+                        default: return 'accessed';
+                    }
+                },
+                getNotificationClass(severity) {
+                    const base = 'border-l-4 ';
+                    switch (severity) {
+                        case 'success': return base + 'border-green-400';
+                        case 'warning': return base + 'border-yellow-400';
+                        case 'error': return base + 'border-red-400';
+                        default: return base + 'border-blue-400';
+                    }
+                },
+                getNotificationIcon(severity) {
+                    switch (severity) {
+                        case 'success': return 'fas fa-check-circle text-green-400';
+                        case 'warning': return 'fas fa-exclamation-triangle text-yellow-400';
+                        case 'error': return 'fas fa-times-circle text-red-400';
+                        default: return 'fas fa-info-circle text-blue-400';
+                    }
+                },
+                formatBytes(bytes) {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                },
+                formatTime(timestamp) {
+                    return new Date(timestamp).toLocaleString();
+                },
+                addNotification(title, message, severity = 'info') {
+                    const notification = {
+                        id: Date.now().toString(),
+                        title,
+                        message,
+                        severity,
+                        timestamp: new Date(),
+                        read: false
+                    };
+                    this.notifications.push(notification);
+                },
+                dismissNotification(id) {
+                    this.notifications = this.notifications.filter(n => n.id !== id);
+                },
+                async importStack() {
+                    try {
+                        const response = await fetch('/api/stacks/import', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                url: this.importUrl,
+                                name: this.importName,
+                                description: this.importDescription
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            this.addNotification('Success', 'Stack imported successfully', 'success');
+                            this.showImportDialog = false;
+                            this.importUrl = '';
+                            this.importName = '';
+                            this.importDescription = '';
+                            // Reload stacks
+                            this.loadInitialData();
+                        } else {
+                            this.addNotification('Error', 'Failed to import stack', 'error');
+                        }
+                    } catch (error) {
+                        this.addNotification('Error', 'Network error occurred', 'error');
+                    }
+                },
+                async deployStack(stackId) {
+                    try {
+                        const response = await fetch(`/api/stacks/${stackId}/deploy`, {
+                            method: 'POST'
+                        });
+                        
+                        if (response.ok) {
+                            this.addNotification('Success', 'Stack deployment initiated', 'success');
+                        } else {
+                            this.addNotification('Error', 'Failed to deploy stack', 'error');
+                        }
+                    } catch (error) {
+                        this.addNotification('Error', 'Network error occurred', 'error');
+                    }
+                },
+                logout() {
+                    // Handle logout
+                    this.showUserMenu = false;
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use tracing::{error, warn, info, debug, span, Level};
+use tracing::{error, warn, info, debug};
 
 /// Enhanced error types for better debugging and monitoring
 #[derive(Debug)]
@@ -134,7 +134,7 @@ pub type Result<T> = std::result::Result<T, GhostDockError>;
 
 /// Enhanced logging with structured data
 pub mod enhanced_logging {
-    use tracing::{info, error, warn, debug, Span};
+    use tracing::{info, error, warn, debug};
     use std::time::Instant;
     
     pub struct RequestLogger {
@@ -172,23 +172,41 @@ pub mod enhanced_logging {
         pub fn log_request_end(&self, status_code: u16, response_size: Option<u64>) {
             let duration = self.start_time.elapsed();
             
-            let log_fn = match status_code {
-                200..=299 => info,
-                400..=499 => warn,
-                500..=599 => error,
-                _ => debug,
-            };
-
-            log_fn!(
-                request_id = %self.request_id,
-                method = %self.method,
-                path = %self.path,
-                client_ip = %self.client_ip,
-                status_code = status_code,
-                duration_ms = duration.as_millis(),
-                response_size = response_size,
-                "Request completed"
-            );
+            // Log based on status code
+            match status_code {
+                200..=299 => tracing::info!(
+                    method = ?self.method,
+                    path = %self.path,
+                    status = status_code,
+                    duration_ms = duration.as_millis(),
+                    response_size = ?response_size,
+                    "Request completed"
+                ),
+                400..=499 => tracing::warn!(
+                    method = ?self.method,
+                    path = %self.path,
+                    status = status_code,
+                    duration_ms = duration.as_millis(),
+                    response_size = ?response_size,
+                    "Request completed with warning"
+                ),
+                500..=599 => tracing::error!(
+                    method = ?self.method,
+                    path = %self.path,
+                    status = status_code,
+                    duration_ms = duration.as_millis(),
+                    response_size = ?response_size,
+                    "Request completed with error"
+                ),
+                _ => tracing::debug!(
+                    method = ?self.method,
+                    path = %self.path,
+                    status = status_code,
+                    duration_ms = duration.as_millis(),
+                    response_size = ?response_size,
+                    "Request completed"
+                ),
+            }
         }
 
         pub fn log_error(&self, error: &dyn std::error::Error) {

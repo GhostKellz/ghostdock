@@ -28,6 +28,9 @@ pub enum Error {
     #[error("Authorization error: {message}")]
     Authorization { message: String },
 
+    #[error("Axum error: {0}")]
+    Axum(#[from] axum::Error),
+
     #[error("Validation error: {message}")]
     Validation { message: String },
 
@@ -111,6 +114,7 @@ impl Error {
             Error::HttpClient(_) => "HTTP_CLIENT_ERROR",
             Error::Toml(_) => "TOML_ERROR",
             Error::Generic(_) => "GENERIC_ERROR",
+            Error::Axum(_) => "AXUM_ERROR",
         }
     }
 }

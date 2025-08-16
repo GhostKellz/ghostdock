@@ -63,7 +63,7 @@ impl PerformanceLayer {
         let mut limiter = self.rate_limiter.write().await;
         let now = Instant::now();
         
-        let requests = limiter.requests.entry(client_ip.to_string()).or_insert_with(Vec::new);
+        let mut requests = limiter.requests.entry(client_ip.to_string()).or_insert_with(Vec::new);
         
         // Remove old requests outside the window
         requests.retain(|&time| now.duration_since(time) <= window);
@@ -91,9 +91,9 @@ pub mod async_optimizations {
     };
     use std::time::Instant;
 
-    pub async fn performance_middleware<B>(
-        req: Request<B>,
-        next: Next<B>,
+    pub async fn performance_middleware(
+        req: Request<axum::body::Body>,
+        next: Next,
     ) -> Response {
         let start = Instant::now();
         
@@ -109,12 +109,24 @@ pub mod async_optimizations {
         response
     }
 
-    /// Connection pooling for database operations
+    /// Connection pool wrapper (placeholder for future database integration)
+    pub struct ConnectionPool {
+        // For now just a placeholder - in a real implementation you'd use
+        // deadpool_postgres::Pool or similar
+        inner: std::marker::PhantomData<()>,
+    }
+
     pub struct AsyncPool {
-        inner: deadpool_postgres::Pool,
+        _phantom: std::marker::PhantomData<()>,
     }
 
     impl AsyncPool {
+        pub fn new() -> Self {
+            Self {
+                _phantom: std::marker::PhantomData,
+            }
+        }
+
         pub async fn execute_optimized<T, F>(&self, operation: F) -> Result<T, Box<dyn std::error::Error>>
         where
             F: FnOnce() -> T + Send + 'static,
@@ -130,7 +142,7 @@ pub mod async_optimizations {
 /// Stream processing for large file uploads/downloads
 pub mod streaming {
     use axum::{
-        body::StreamBody,
+        body::Body,
         response::Response,
     };
     use tokio_util::io::ReaderStream;
@@ -138,12 +150,12 @@ pub mod streaming {
     
     pub fn create_streaming_response<S>(stream: S) -> Response
     where
-        S: Stream<Item = Result<bytes::Bytes, std::io::Error>> + Send + 'static,
+        S: futures::Stream<Item = Result<bytes::Bytes, std::io::Error>> + Send + 'static,
     {
-        let body = StreamBody::new(stream);
+        let body = Body::from_stream(stream);
         Response::builder()
             .header("Transfer-Encoding", "chunked")
-            .body(body.into())
+            .body(body)
             .unwrap()
     }
 

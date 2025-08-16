@@ -1,33 +1,60 @@
 version: '3.8'
 
 services:
+  # GhostDock Registry with enhanced features
   ghostdock:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ghostdock-registry
-    ports:
-      - "5000:5000"    # Registry API
-      - "8080:8080"    # Web UI
-    volumes:
-      - ./data:/var/lib/ghostdock
-      - ./config:/etc/ghostdock
-      - ./logs:/var/log/ghostdock
-    environment:
-      - GHOSTDOCK_CONFIG=/etc/ghostdock/config.toml
-      - GHOSTDOCK_STORAGE_PATH=/var/lib/ghostdock
-      - GHOSTDOCK_LOG_LEVEL=info
-      - RUST_LOG=info
     restart: unless-stopped
+    ports:
+      - "5000:5000"  # Registry API
+      - "8080:8080"  # Web Interface
+    volumes:
+      - ghostdock_data:/data
+      - ghostdock_config:/config
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker Compose stack management
+    environment:
+      - GHOSTDOCK_DATABASE_URL=sqlite:///data/ghostdock.db
+      - GHOSTDOCK_STORAGE_PATH=/data/registry
+      - GHOSTDOCK_JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      - GHOSTDOCK_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - GHOSTDOCK_LOG_LEVEL=info
+      - GHOSTDOCK_ENABLE_STACKS=true
+      - GHOSTDOCK_ENABLE_WEBSOCKETS=true
+      - RUST_LOG=info
+    depends_on:
+      - redis
+      - prometheus
+    networks:
+      - ghostdock-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ghostdock.rule=Host(`registry.yourdomain.com`)"
+      - "traefik.http.routers.ghostdock.tls.certresolver=letsencrypt"
 
-  # Optional: Database (if using external database instead of embedded SQLite)
-  # postgres:
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: ghostdock-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - ghostdock-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   #   image: postgres:15-alpine
   #   container_name: ghostdock-postgres
   #   environment:
@@ -53,10 +80,80 @@ services:
   #   healthcheck:
   #     test: ["CMD", "redis-cli", "ping"]
   #     interval: 5s
-  #     timeout: 3s
-  #     retries: 5
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ghostdock-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ghostdock-network
 
-  # Optional: Nginx reverse proxy
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ghostdock-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    depends_on:
+      - prometheus
+    networks:
+      - ghostdock-network
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ghostdock-node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - ghostdock-network
+
+  # cAdvisor for container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: ghostdock-cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    networks:
+      - ghostdock-network
+
+  # Nginx reverse proxy (optional - can be replaced with Traefik)
   nginx:
     image: nginx:alpine
     container_name: ghostdock-nginx
@@ -70,13 +167,24 @@ services:
     depends_on:
       - ghostdock
     restart: unless-stopped
+    networks:
+      - ghostdock-network
 
 volumes:
-  # postgres_data:
-  # redis_data:
   ghostdock_data:
-  ghostdock_logs:
+    driver: local
+  ghostdock_config:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
 
 networks:
-  default:
-    name: ghostdock-network
+  ghostdock-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
